@@ -39,7 +39,8 @@ int main(int argc, char **argv)
 
   // Enable recording with the filename specified in argument
   String path_output(argv[1]);
-  returned_state = zed.enableRecording(RecordingParameters(path_output, SVO_COMPRESSION_MODE::H264));
+  returned_state = zed.enableRecording(RecordingParameters(path_output, SVO_COMPRESSION_MODE::LOSSLESS));
+
   if (returned_state != ERROR_CODE::SUCCESS)
   {
     print("Recording ZED : ", returned_state);
@@ -52,7 +53,7 @@ int main(int argc, char **argv)
   SetCtrlHandler();
   int frames_recorded = 0;
   sl::RecordingStatus rec_status;
-  while (!exit_app)
+  while (frames_recorded < 500)
   {
     if (zed.grab() == ERROR_CODE::SUCCESS)
     {

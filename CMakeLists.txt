@@ -32,11 +32,13 @@ ENDIF()
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${ZED_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories("C:/OpenCV/opencv/build/include")
 
 link_directories(${ZED_LIBRARY_DIR})
 link_directories(${CUDA_LIBRARY_DIRS})
 
-add_executable(zed2 include/utils.hpp ZED/main.cpp)
+add_executable(zed2_Rec include/utils.hpp ZED/main.cpp)
+add_executable(zed2_Parse include/utilsParse.hpp ZED/parse.cpp)
 add_definitions(-std=c++14 -O3)
 
 if (LINK_SHARED_ZED)
@@ -45,7 +47,8 @@ else()
     set(ZED_LIBS ${ZED_STATIC_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_LIBRARY})
 endif()
 
-target_link_libraries(zed2 ${ZED_LIBS} ${OpenCV_LIBRARIES})
+target_link_libraries(zed2_Rec ${ZED_LIBS} ${OpenCV_LIBRARIES})
+target_link_libraries(zed2_Parse ${ZED_LIBS} ${OpenCV_LIBRARIES})
 
 if(INSTALL_SAMPLES)
     list(APPEND SAMPLE_LIST zed2)
