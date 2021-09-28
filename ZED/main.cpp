@@ -2,7 +2,7 @@
 #include <sl/Camera.hpp>
 
 // Sample includes
-#include "utils.hpp"
+#include "include/utils.hpp"
 
 // Using namespace
 using namespace sl;
@@ -26,7 +26,7 @@ int main(int argc, char **argv)
   // Set configuration parameters for the ZED
   InitParameters init_parameters;
   init_parameters.camera_resolution = RESOLUTION::HD1080;
-  init_parameters.depth_mode = DEPTH_MODE::PERFORMANCE;
+  init_parameters.depth_mode = DEPTH_MODE::QUALITY;
   parseArgs(argc, argv, init_parameters);
 
   // Open the camera
@@ -53,7 +53,7 @@ int main(int argc, char **argv)
   SetCtrlHandler();
   int frames_recorded = 0;
   sl::RecordingStatus rec_status;
-  while (frames_recorded < 500)
+  while (frames_recorded < 100)
   {
     if (zed.grab() == ERROR_CODE::SUCCESS)
     {

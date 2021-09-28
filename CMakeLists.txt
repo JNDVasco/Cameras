@@ -24,6 +24,7 @@ set(EXECUTABLE_OUTPUT_PATH ".")
 
 find_package(ZED 2 REQUIRED)
 find_package(CUDA ${ZED_CUDA_VERSION} EXACT REQUIRED)
+find_package(OpenCV REQUIRED)
 
 IF(NOT WIN32)
     SET(SPECIAL_OS_LIBS "pthread" "X11")
@@ -32,13 +33,16 @@ ENDIF()
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${ZED_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-include_directories("C:/OpenCV/opencv/build/include")
+include_directories(${OpenCV_INCLUDE_DIRS})
+
+#include_directories("C:/OpenCV/opencv/build/include")
 
 link_directories(${ZED_LIBRARY_DIR})
 link_directories(${CUDA_LIBRARY_DIRS})
+link_directories(${OpenCV_LIBRARY_DIRS})
 
-add_executable(zed2_Rec include/utils.hpp ZED/main.cpp)
-add_executable(zed2_Parse include/utilsParse.hpp ZED/parse.cpp)
+add_executable(zed2_Rec ZED/include/utils.hpp ZED/main.cpp)
+add_executable(zed2_Parse ZED/include/utilsParse.hpp ZED/parse.cpp)
 add_definitions(-std=c++14 -O3)
 
 if (LINK_SHARED_ZED)
