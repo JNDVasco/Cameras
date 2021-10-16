@@ -1,18 +1,16 @@
 //================================================================
-// Created by João Vasco on 28/09/2021.
+// Created by João Vasco on 05/10/2021.
 //================================================================
 // ZED includes
 #include <sl/Camera.hpp>
-
-// Sample includes
-#include <iostream>
-#include <sstream>
-#include <opencv2/opencv.hpp>
 #include "include/utils.hpp"
+#include <opencv2/opencv.hpp>
 
-// Using namespace
+
 using namespace sl;
 using namespace std;
+
+void print(string msg_prefix, ERROR_CODE err_code = ERROR_CODE::SUCCESS, string msg_suffix = "");
 
 enum APP_TYPE
 {
@@ -21,31 +19,97 @@ enum APP_TYPE
     LEFT_AND_DEPTH_16
 };
 
-void print(string msg_prefix, ERROR_CODE err_code = ERROR_CODE::SUCCESS, string msg_suffix = "");
+//String outputPath("C:/Documentos 2/CLion/Cameras/ZED/output/");
+string outputPath;
 
 int main(int argc, char **argv)
 {
+  cout << "Recolha de imagens ZED 2" << endl;
+  cout << "Caminho de saida absoluto ou ./ para este diretorio" << endl;
+  cout << "Obrigatorio um / no fim. Default ./output/" << endl;
 
-  if (argc != 4)
+  if (cin.peek() == '\n')
   {
-    cout << "Usage: \n\n";
-    cout << "    ZED_SVO_Export A B C \n\n";
-    cout << "Please use the following parameters from the command line:\n";
-    cout << " A - SVO file path (input) : \"path/to/file.svo\"\n";
-    cout
-      << " B - AVI file path (output) or image sequence folder(output) : \"path/to/output/file.avi\" or \"path/to/output/folder\"\n";
-    cout << " C - Export mode:  2=Export LEFT+RIGHT image sequence.\n";
-    cout << "                   3=Export LEFT+DEPTH_VIEW image sequence.\n";
-    cout << "                   4=Export LEFT+DEPTH_16Bit image sequence.\n";
-    cout << " A and B need to end with '/' or '\\'\n\n";
-    cout << "Examples: \n";
-    cout << "  (SEQUENCE LEFT+RIGHT)   ZED_SVO_Export \"path/to/file.svo\" \"path/to/output/folder\" 2\n";
-    cout << "  (SEQUENCE LEFT+DEPTH)   ZED_SVO_Export \"path/to/file.svo\" \"path/to/output/folder\" 3\n";
-    cout << "  (SEQUENCE LEFT+DEPTH_16Bit)   ZED_SVO_Export \"path/to/file.svo\" \"path/to/output/folder\" 4\n";
-    cout << "\nPress [Enter] to continue";
-    cin.ignore();
-    return 1;
+    outputPath = "./output/";
   }
+  else if (!(std::cin >> outputPath))
+  { //be sure to handle invalid input
+    cout << "Invalid input.\n";
+    //error handling
+  }
+
+  // Create a ZED camera
+  Camera zed;
+
+  /* Set configuration parameters for the ZED
+   * RESOLUTION sets the RGB image size
+   * - HD2K   -> 2208*1242 15fps max
+   * - HD1080 -> 1920*1080 30fps max
+   * - HD720  -> 1280*720  60fps max
+   * - VGA    -> 672*376  100fps max
+   *
+   * DEPTH_MODE sets the quality of the depth map
+   * - ULTRA
+   * - QUALITY
+   * - PERFOMANCE
+   * - NONE
+   *
+   */
+
+
+  InitParameters init_parameters;
+  init_parameters.camera_resolution = RESOLUTION::HD720;
+  init_parameters.camera_fps = 15;
+  init_parameters.depth_mode = DEPTH_MODE::QUALITY;
+
+  RecordingParameters recording_parameters;
+
+  recording_parameters.video_filename.set(outputPath.c_str());
+  recording_parameters.compression_mode = SVO_COMPRESSION_MODE::LOSSLESS;
+
+  // Open the camera
+  auto returned_state = zed.open(init_parameters);
+  if (returned_state != ERROR_CODE::SUCCESS)
+  {
+    print("Camera Open", returned_state, "Exit program.");
+    return EXIT_FAILURE;
+  }
+
+  // Enable recording with the filename specified in argument
+  String path_output(argv[1]);
+  returned_state = zed.enableRecording(recording_parameters);
+
+  if (returned_state != ERROR_CODE::SUCCESS)
+  {
+    print("Recording ZED : ", returned_state);
+    zed.close();
+    return EXIT_FAILURE;
+  }
+
+  // Start recording SVO, stop with Ctrl-C command
+  print("SVO is Recording, use Ctrl-C to stop.");
+  SetCtrlHandler();
+  int frames_recorded = 0;
+  sl::RecordingStatus rec_status;
+  while (!exit_app)
+  {
+    if (zed.grab() == ERROR_CODE::SUCCESS)
+    {
+      // Each new frame is added to the SVO file
+      rec_status = zed.getRecordingStatus();
+      if (rec_status.status)
+        frames_recorded++;
+      std::cout << '\r' << "Frame Count: " << frames_recorded << "Ctrl + C para sair" << std::flush;
+    }
+  }
+
+  // Stop recording
+  zed.disableRecording();
+  zed.close();
+
+  //################################
+  //# Parsing the SVO file to pngs #
+  //################################
 
   // Get input parameters
   string svo_input_path(argv[1]);
@@ -56,7 +120,7 @@ int main(int argc, char **argv)
   if (!strcmp(argv[3], "4"))
     app_type = LEFT_AND_DEPTH_16;
 
-  // Check if exporting to AVI or SEQUENCE
+  // Check if exporting to AVI or SEQUENCEs
 
   if (!directoryExists(output_path))
   {
@@ -179,6 +243,8 @@ int main(int argc, char **argv)
   }
 
   zed.close();
+  return EXIT_SUCCESS;
+
   return EXIT_SUCCESS;
 }
 

@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) try
     cout << "Pasta Criada em: " << outFolder << endl;
   }
 
-  rs2::colorizer color_map;  // Declare depth colorizer for pretty visualization of depth data
+  rs2::colorizer color_map(3);  // Declare depth colorizer for pretty visualization of depth data
   rs2::pipeline pipe; // Declare RealSense pipeline, encapsulating the actual device and sensors
   pipe.start();     // Start streaming with default recommended configuration
 
