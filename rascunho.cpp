@@ -6,42 +6,32 @@
 #include <thread>
 #include <functional>
 #include <atomic>
-#include <string>
-#include <vector>
+
 #include "include/utils.hpp" //Contains the ctrl+c handler
 
 //Zed Libs
 #include <sl/Camera.hpp>
 
-//Intel Libs
-#include <librealsense2/rs.hpp> // Include RealSense Cross Platform API
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-
-#include "stb_image_write.h"
-
-
 std::atomic<int> zedFrameCount;
 std::atomic<int> intelFrameCount;
 
-std::vector<rs2::video_frame> intelFrameBuffer;
-
 sl::String zedOutputPath("C:/Documentos 2/CLion/Cameras/Both/output/zed/test.svo");
-std::string intelOutputPath = "C:\\Documentos 2\\CLion\\Cameras\\Both\\output\\intel\\";
 
 
 /* Timing const so we now when to capture each frame
  * If we want a final output with 30 fps we need to
  * capture 30 frames per second ie one each 1000/30 milliseconds
  */
-const int fpsOutput = 20;
+const int fpsOutput = 30;
 const int millisBetweenFrames = 1000 / fpsOutput;
 
 /* Aux functions declaration */
 void
-threadTimer(std::function<void(sl::Camera &zedObject)> inputFunction, unsigned int interval, sl::Camera &zedObject);
+threadTimerZed(std::function<void(sl::Camera &zedObject)> inputFunction, unsigned int interval, sl::Camera &zedObject);
 bool initZed(sl::Camera &zedObject);
+void initIntel();
 void zedFrameCapture(sl::Camera &zedObject);
+void threadTwo();
 
 
 int main()
@@ -49,8 +39,7 @@ int main()
   std::cout << "[INFO] - Final FPS: " << fpsOutput << std::endl;
   std::cout << "[INFO] - Time between frames: " << millisBetweenFrames << std::endl;
 
-
-  std::cout << "[INFO] - Starting Zed camera" << std::endl;
+  std::cout << "Starting Zed camera" << std::endl;
   sl::Camera zedCam;
 
   if (!initZed(zedCam))
@@ -60,15 +49,19 @@ int main()
 
   zedFrameCount = 0;
 
-  //Put the cameras capturing in the background
-  threadTimer(zedFrameCapture, millisBetweenFrames, zedCam);
+  /*std::cout << "Starting Intel camera" << std::endl;
+  sl::Camera intelCam;
+
+  if (!initZed(zedCam))
+  {
+    return -1;
+  }*/
+
+  //Put the zed capturing in the background
+  threadTimerZed(zedFrameCapture, millisBetweenFrames, zedCam);
 
   SetCtrlHandler(); //Capture CTRL + C so we know when to exit
   while (!exit_app); //Wait unitl we want to leave the app
-
-  //======================
-  //= App shutdown stuff =
-  //======================
 
   //Wait for 2 seconds and let other threads to finish before closing
   std::this_thread::sleep_for(std::chrono::milliseconds(2000));
@@ -76,16 +69,14 @@ int main()
   zedCam.disableRecording(); //Stop the video stream
   zedCam.close(); //Close the data stream and leave the cam available
 
-  //Print some information and wait some time so we can read it
-  std::cout << "===================================" << std::endl;
-  std::cout << "[INFO ZED] - Frames Capturados: " << zedFrameCount << std::endl;
-  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-
+  //Print some information
+  std::cout << "===============================" << std::endl;
+  std::cout << "Frames Capturados: " << zedFrameCount << std::endl;
+  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
   return 0;
 } //End main()
 
-/*======================================================================================================================
- * initZed()
+/* initZed()
  * This function starts a zed cam object
  * with the parameters we want.
  * This function returns false if there was
@@ -104,7 +95,7 @@ int main()
  * - QUALITY
  * - PERFOMANCE
  * - NONE
- *====================================================================================================================*/
+ */
 bool initZed(sl::Camera &zedObject)
 {
   sl::InitParameters init_parameters;
@@ -148,33 +139,40 @@ bool initZed(sl::Camera &zedObject)
   return true;
 }
 
-/*======================================================================================================================
- *====================================================================================================================*/
-void threadTimer(std::function<void(sl::Camera &zedObject)> inputFunction, unsigned int interval, sl::Camera &zedObject)
+
+void
+threadTimerZed(std::function<void(sl::Camera &zedObject)> inputFunction, unsigned int interval, sl::Camera &zedObject)
 {
   std::thread([inputFunction, interval, &zedObject]()
               {
-                  while (!exit_app)
+                  while (true)
                   {
                     auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(interval);
                     inputFunction(zedObject);
                     std::this_thread::sleep_until(x);
                   }
-              }).
-    detach();
+              }).detach();
 }
 
-/*======================================================================================================================
- *====================================================================================================================*/
+
 void zedFrameCapture(sl::Camera &zedObject)
 {
   //sl::RecordingStatus rec_status;
   if (zedObject.grab() == sl::ERROR_CODE::SUCCESS)
   {
     zedFrameCount++;
-    std::cout << "[INFO ZED] - Frame count: " << zedFrameCount << std::endl;
+    std::cout << "Frame count: " << zedFrameCount << std::endl;
   }
 }
 
-/*======================================================================================================================
- *====================================================================================================================*/
+void threadTwo()
+{
+  long time = std::chrono::time_point_cast<std::chrono::milliseconds>(
+    std::chrono::steady_clock::now()).time_since_epoch().count();
+  std::cout << "Printed from thread two!" << std::endl;
+  std::cout << time << std::endl;
+  std::cout << "====================" << std::endl;
+}
+
+
+//======================================================================================================================

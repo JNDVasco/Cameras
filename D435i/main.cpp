@@ -1,104 +1,93 @@
-//================================================================
-// Created by João Vasco on 23/09/2021.
-//================================================================
+// License: Apache 2.0. See LICENSE file in root directory.
+// Copyright(c) 2015-2017 Intel Corporation. All Rights Reserved.
+
 #include <librealsense2/rs.hpp> // Include RealSense Cross Platform API
+
 #include <fstream>              // File IO
 #include <iostream>             // Terminal IO
-#include <string>
-#include <chrono>               // Time
+#include <sstream>              // Stringstreams
+#include <vector>
 
-#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
-
-#include <experimental/filesystem>
-
+// 3rd party header for writing png files
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
 #include "stb_image_write.h"
 
-namespace fs = std::experimental::filesystem;
-using namespace std;
-
-long millis();
-
-string outFolder = "Output\\";
-// string outRGB = "RGB\\";
-// string outDepth = "Depth\\";
-string filepath = "C:\\Documentos 2\\CLion\\Cameras\\";
-
-const int photoCount = 20; //Number of frames to capture
+std::vector<rs2::video_frame> videoBuffer;
+std::vector<rs2::depth_frame> depthBuffer;
 
 int main(int argc, char *argv[]) try
 {
-  long captureTimeLog[photoCount];
 
-  outFolder = filepath + outFolder;
+  rs2::config config;
+  config.disable_all_streams();
+  config.enable_stream(rs2_stream::RS2_STREAM_DEPTH, 1280, 720, rs2_format::RS2_FORMAT_Z16, 15);
+  config.enable_stream(rs2_stream::RS2_STREAM_COLOR, 1280, 720, rs2_format::RS2_FORMAT_RGB8, 15);
 
-  if (!fs::is_directory(outFolder) || !fs::exists(outFolder))
-  { // Check if src folder exists
-    fs::create_directory(outFolder); // create src folder
-    cout << "Pasta Criada em: " << outFolder << endl;
-  }
 
-  rs2::colorizer color_map(3);  // Declare depth colorizer for pretty visualization of depth data
-  rs2::pipeline pipe; // Declare RealSense pipeline, encapsulating the actual device and sensors
-  pipe.start();     // Start streaming with default recommended configuration
+  rs2::colorizer color_map;
+  rs2::pipeline pipe;
+  pipe.start(config);
 
-  for (auto i = 0; i < 30; ++i) pipe.wait_for_frames(); //Let the cam output stabilize
+  int counter = 0;
+  int vfCounter = 0;
+  int dfCounter = 0;
 
-  long startMillis = millis();
-  long oldMillis = startMillis;
 
-  for (int i = 0; i < 20; ++i)
+  for (int i = 0; i < 100; ++i)
   {
-    oldMillis = millis();
-    for (auto &&frame: pipe.wait_for_frames())
+
+    auto &&frame = pipe.wait_for_frames();
+
+    std::cout << "Frame: " << counter << std::endl;
+
+    for (auto vframe: frame)
     {
-      // We can only save video frames as pngs, so we skip the rest
-      if (auto vf = frame.as<rs2::video_frame>())
+      //frameBuffer.clear();
+      if (rs2::video_frame vf = vframe.as<rs2::video_frame>())
       {
-        if (vf.is<rs2::depth_frame>()) continue;
-        //if (vf.is<rs2::depth_frame>()) vf = color_map.process(frame);
 
-        stringstream png_file;
-        png_file << outFolder << "RS_D435i_" << (millis() - startMillis) << vf.get_profile().stream_name() << ".png";
-        stbi_write_png(png_file.str().c_str(), vf.get_width(), vf.get_height(),
-                       vf.get_bytes_per_pixel(), vf.get_data(), vf.get_stride_in_bytes());
-        cout << "Saved " << png_file.str() << endl;
+        if (vf.is<rs2::depth_frame>())
+        {
+          std::cout << "==========" << std::endl << "Depth" << std::endl << "==========" << std::endl;
+          depthBuffer.emplace_back(vf);
+          dfCounter++;
+        }
+        else
+        {
+          std::cout << "==========" << std::endl << "Video" << std::endl << "==========" << std::endl;
+          videoBuffer.emplace_back(vf);
+          vfCounter++;
+        }
+        std::cout << "Frame: " << counter << "  Video frame: " << vfCounter << "  Depth frame: " << dfCounter
+                  << std::endl;
+
+/*
+      auto stream = frame.get_profile().stream_type();
+      // Use the colorizer to get an rgb image for the depth stream
+      if (vf.is<rs2::depth_frame>()) vf = color_map.process(frame);
+
+      // Write images to disk
+      std::stringstream png_file;
+      png_file << "rs-save-to-disk-output-" << vf.get_profile().stream_name() << ".png";
+      stbi_write_png(png_file.str().c_str(), vf.get_width(), vf.get_height(),
+                     vf.get_bytes_per_pixel(), vf.get_data(), vf.get_stride_in_bytes());
+      std::cout << "Saved " << png_file.str() << std::endl;
+*/
       }
-      captureTimeLog[i] = millis() - oldMillis;
     }
+    counter++;
   }
-  cout << millis() << endl;
-
-  cout << "==== Duracoes ====" << endl;
-
-  for (int i = 0; i < photoCount; ++i)
-  {
-    cout << "Duracao " << i << " :" << captureTimeLog[i] << endl;
-  }
-
   return EXIT_SUCCESS;
 }
 catch (const rs2::error &e)
 {
-  cerr << "RealSense error calling " << e.get_failed_function() << "(" << e.get_failed_args() << "):\n    "
-       << e.what() << endl;
+  std::cerr << "RealSense error calling " << e.get_failed_function() << "(" << e.get_failed_args() << "):\n    "
+            << e.what() << std::endl;
   return EXIT_FAILURE;
 }
-catch (const exception &e)
+catch (const std::exception &e)
 {
-  cerr << e.what() << endl;
+  std::cerr << e.what() << std::endl;
   return EXIT_FAILURE;
 }
-
-
-//======================================================================
-//= This calculates the current millis
-//= Receives nothing
-//= Returns the current milliseconds
-//= Status: Done
-//======================================================================
-long millis()
-{
-  return chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
-}//End millis
