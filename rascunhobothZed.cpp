@@ -34,16 +34,12 @@ std::string intelOutputPath = "C:\\Documentos 2\\CLion\\Cameras\\Both\\output\\i
  * If we want a final output with 30 fps we need to
  * capture 30 frames per second ie one each 1000/30 milliseconds
  */
-const int fpsOutput = 30;
+const int fpsOutput = 20;
 const int millisBetweenFrames = 1000 / fpsOutput;
 
-
 /* Aux functions declaration */
-void threadTimer(std::function<void(sl::Camera &)> inputFunctionZed,
-                 std::function<void(rs2::pipeline, rs2::colorizer)> inputFunctionIntel,
-                 unsigned int interval, sl::Camera &zedObject, rs2::pipeline &inputPipe,
-                 rs2::colorizer &inputColorizer);
-void intelFrameCapture(rs2::pipeline inputPipe, rs2::colorizer inputColorizer);
+void
+threadTimer(std::function<void(sl::Camera &zedObject)> inputFunction, unsigned int interval, sl::Camera &zedObject);
 bool initZed(sl::Camera &zedObject);
 void zedFrameCapture(sl::Camera &zedObject);
 
@@ -62,27 +58,10 @@ int main()
     return -1;
   }
 
-  std::cout << "[INFO] - Starting Intel camera" << std::endl;
-
-  rs2::config config;
-  config.enable_stream(rs2_stream::RS2_STREAM_DEPTH, 1280, 720, rs2_format::RS2_FORMAT_Z16, 30);
-  config.enable_stream(rs2_stream::RS2_STREAM_COLOR, 1280, 720, rs2_format::RS2_FORMAT_RGB8, 30);
-
-  rs2::colorizer intelColorMap(3); // Color Scheme white to black
-  rs2::pipeline pipe;              // Declare RealSense pipeline, encapsulating the actual device and sensors
-  pipe.start(config);              // Start streaming with provided configuration
-
-  std::cout << "[INFO] - Intel camera ready" << std::endl;
-  for (auto i = 0; i < 30; ++i)
-  {
-    pipe.wait_for_frames();
-  }
-
-
   zedFrameCount = 0;
 
   //Put the cameras capturing in the background
-  threadTimer(zedFrameCapture, intelFrameCapture, millisBetweenFrames, zedCam, pipe, intelColorMap);
+  threadTimer(zedFrameCapture, millisBetweenFrames, zedCam);
 
   SetCtrlHandler(); //Capture CTRL + C so we know when to exit
   while (!exit_app); //Wait unitl we want to leave the app
@@ -100,8 +79,7 @@ int main()
   //Print some information and wait some time so we can read it
   std::cout << "===================================" << std::endl;
   std::cout << "[INFO ZED] - Frames Capturados: " << zedFrameCount << std::endl;
-  std::cout << "[INFO INTEL] - Frames Capturados: " << intelFrameCount << std::endl;
-  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
   return 0;
 } //End main()
@@ -172,25 +150,18 @@ bool initZed(sl::Camera &zedObject)
 
 /*======================================================================================================================
  *====================================================================================================================*/
-void threadTimer(std::function<void(sl::Camera &)> inputFunctionZed,
-                 std::function<void(rs2::pipeline, rs2::colorizer)> inputFunctionIntel,
-                 unsigned int interval, sl::Camera &zedObject, rs2::pipeline &inputPipe,
-                 rs2::colorizer &inputColorizer)
+void threadTimer(std::function<void(sl::Camera &zedObject)> inputFunction, unsigned int interval, sl::Camera &zedObject)
 {
-  std::thread([inputFunctionZed, inputFunctionIntel, interval, &zedObject, &inputPipe, &inputColorizer]()
+  std::thread([inputFunction, interval, &zedObject]()
               {
                   while (!exit_app)
                   {
                     auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(interval);
-                    std::thread intelThread(inputFunctionIntel, inputPipe, inputColorizer);
-
-                    inputFunctionZed(zedObject);
-
-                    intelThread.detach();
-
+                    inputFunction(zedObject);
                     std::this_thread::sleep_until(x);
                   }
-              }).detach();
+              }).
+    detach();
 }
 
 /*======================================================================================================================
@@ -207,33 +178,3 @@ void zedFrameCapture(sl::Camera &zedObject)
 
 /*======================================================================================================================
  *====================================================================================================================*/
-void intelFrameCapture(rs2::pipeline inputPipe, rs2::colorizer inputColorizer) try
-{
-  for (auto &&frame: inputPipe.wait_for_frames())
-  {
-    if (auto vf = frame.as<rs2::video_frame>())
-    {
-      if (vf.is<rs2::depth_frame>()) vf = inputColorizer.process(frame);
-
-
-      std::stringstream png_file;
-      png_file << "intel-" << intelFrameCount << "-" << vf.get_profile().stream_name() << ".png";
-
-      if (exit_app) break;
-
-      stbi_write_png(png_file.str().c_str(), vf.get_width(), vf.get_height(),
-                     vf.get_bytes_per_pixel(), vf.get_data(), vf.get_stride_in_bytes());
-    }
-  }
-  intelFrameCount++;
-  std::cout << "[INFO INTEL] - Frame count: " << intelFrameCount << std::endl;
-}
-catch (const rs2::error &e)
-{
-  std::cerr << "RealSense error calling " << e.get_failed_function() << "(" << e.get_failed_args() << "):\n    "
-            << e.what() << std::endl;
-}
-catch (const std::exception &e)
-{
-  std::cerr << e.what() << std::endl;
-}
