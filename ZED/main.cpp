@@ -8,9 +8,6 @@
 using namespace sl;
 using namespace std;
 
-void print(string msg_prefix, ERROR_CODE err_code = ERROR_CODE::SUCCESS, string msg_suffix = "");
-void parseArgs(int argc, char **argv, sl::InitParameters &param);
-
 int main(int argc, char **argv)
 {
 
@@ -26,116 +23,36 @@ int main(int argc, char **argv)
   // Set configuration parameters for the ZED
   InitParameters init_parameters;
   init_parameters.camera_resolution = RESOLUTION::HD1080;
+  init_parameters.camera_fps = 30;
   init_parameters.depth_mode = DEPTH_MODE::QUALITY;
-  parseArgs(argc, argv, init_parameters);
 
   // Open the camera
   auto returned_state = zed.open(init_parameters);
-  if (returned_state != ERROR_CODE::SUCCESS)
-  {
-    print("Camera Open", returned_state, "Exit program.");
+  if (returned_state != ERROR_CODE::SUCCESS) {
+    cout << "Error " << returned_state << ", exit program." << endl;
     return EXIT_FAILURE;
   }
 
-  // Enable recording with the filename specified in argument
-  String path_output(argv[1]);
-  returned_state = zed.enableRecording(RecordingParameters(path_output, SVO_COMPRESSION_MODE::LOSSLESS));
+  // Capture 50 frames and stop
+  int i = 0;
 
-  if (returned_state != ERROR_CODE::SUCCESS)
-  {
-    print("Recording ZED : ", returned_state);
-    zed.close();
-    return EXIT_FAILURE;
-  }
+  sl::Mat image;
+  while (i < 50) {
+    // Grab an image
+    returned_state = zed.grab();
+    // A new image is available if grab() returns ERROR_CODE::SUCCESS
+    if (returned_state == ERROR_CODE::SUCCESS) {
 
-  // Start recording SVO, stop with Ctrl-C command
-  print("SVO is Recording, use Ctrl-C to stop.");
-  SetCtrlHandler();
-  int frames_recorded = 0;
-  sl::RecordingStatus rec_status;
-  while (frames_recorded < 100)
-  {
-    if (zed.grab() == ERROR_CODE::SUCCESS)
-    {
-      // Each new frame is added to the SVO file
-      rec_status = zed.getRecordingStatus();
-      if (rec_status.status)
-        frames_recorded++;
-      print("Frame count: " + to_string(frames_recorded));
+      // Get the left image
+      zed.retrieveImage(image, VIEW::LEFT);
+
+      // Display the image resolution and its acquisition timestamp
+      cout<<"Image resolution: "<< image.getWidth()<<"x"<<image.getHeight() <<" || Image timestamp: "<<image.timestamp.data_ns<<endl;
+      i++;
     }
   }
 
-  // Stop recording
-  zed.disableRecording();
+  // Close the camera
   zed.close();
   return EXIT_SUCCESS;
-}
-
-void print(string msg_prefix, ERROR_CODE err_code, string msg_suffix)
-{
-  cout << "[Sample]";
-  if (err_code != ERROR_CODE::SUCCESS)
-    cout << "[Error] ";
-  else
-    cout << " ";
-  cout << msg_prefix << " ";
-  if (err_code != ERROR_CODE::SUCCESS)
-  {
-    cout << " | " << toString(err_code) << " : ";
-    cout << toVerbose(err_code);
-  }
-  if (!msg_suffix.empty())
-    cout << " " << msg_suffix;
-  cout << endl;
-}
-
-void parseArgs(int argc, char **argv, sl::InitParameters &param)
-{
-  if (argc > 2 && string(argv[2]).find(".svo") != string::npos)
-  {
-    // SVO input mode
-    cout << "[sample][Warning] SVO input is not supported... switching to live mode" << endl;
-  }
-  else if (argc > 2 && string(argv[2]).find(".svo") == string::npos)
-  {
-    string arg = string(argv[2]);
-    unsigned int a, b, c, d, port;
-    if (sscanf(arg.c_str(), "%u.%u.%u.%u:%d", &a, &b, &c, &d, &port) == 5)
-    {
-      // Stream input mode - IP + port
-      string ip_adress = to_string(a) + "." + to_string(b) + "." + to_string(c) + "." + to_string(d);
-      param.input.setFromStream(sl::String(ip_adress.c_str()), port);
-      cout << "[Sample] Using Stream input, IP : " << ip_adress << ", port : " << port << endl;
-    }
-    else if (sscanf(arg.c_str(), "%u.%u.%u.%u", &a, &b, &c, &d) == 4)
-    {
-      // Stream input mode - IP only
-      param.input.setFromStream(sl::String(argv[2]));
-      cout << "[Sample] Using Stream input, IP : " << argv[2] << endl;
-    }
-    else if (arg.find("HD2K") != string::npos)
-    {
-      param.camera_resolution = sl::RESOLUTION::HD2K;
-      cout << "[Sample] Using Camera in resolution HD2K" << endl;
-    }
-    else if (arg.find("HD1080") != string::npos)
-    {
-      param.camera_resolution = sl::RESOLUTION::HD1080;
-      cout << "[Sample] Using Camera in resolution HD1080" << endl;
-    }
-    else if (arg.find("HD720") != string::npos)
-    {
-      param.camera_resolution = sl::RESOLUTION::HD720;
-      cout << "[Sample] Using Camera in resolution HD720" << endl;
-    }
-    else if (arg.find("VGA") != string::npos)
-    {
-      param.camera_resolution = sl::RESOLUTION::VGA;
-      cout << "[Sample] Using Camera in resolution VGA" << endl;
-    }
-  }
-  else
-  {
-    // Default
-  }
 }
