@@ -10,7 +10,9 @@ cmake_minimum_required(VERSION 3.20)
 include_directories("C:/Program Files (x86)/Intel RealSense SDK 2.0/include" "C:/Program Files (x86)/Intel RealSense SDK 2.0/third-party")
 link_directories("C:/Program Files (x86)/Intel RealSense SDK 2.0/lib/x64" "C:/Program Files (x86)/Intel RealSense SDK 2.0/bin/x64")
 add_executable(d435i D435i/main.cpp)
+add_executable(binToJPG D435i/binToJPG.cpp)
 target_link_libraries(d435i realsense2.lib)
+target_link_libraries(binToJPG realsense2.lib)
 
 ################################
 # ZED 2 Compiliation Libraries #
@@ -46,7 +48,6 @@ link_directories(${OpenCV_LIBRARY_DIRS})
 add_executable(zed2_Rec ZED/include/utils.hpp ZED/main.cpp)
 add_executable(zed2_Parse ZED/include/utils.hpp ZED/parse.cpp)
 add_executable(zed2_RecParse ZED/include/utils.hpp ZED/captureAndParse.cpp)
-add_definitions(-std=c++14 -O3)
 
 if (LINK_SHARED_ZED)
     set(ZED_LIBS ${ZED_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_CUDART_LIBRARY} ${CUDA_NPP_LIBRARIES_ZED})
