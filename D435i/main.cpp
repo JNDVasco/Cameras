@@ -1,5 +1,6 @@
-// License: Apache 2.0. See LICENSE file in root directory.
-// Copyright(c) 2015-2017 Intel Corporation. All Rights Reserved.
+//================================================================
+// Created by João Vasco on 18/10/2021.
+//================================================================
 
 #include <librealsense2/rs.hpp> // Include RealSense Cross Platform API
 
@@ -30,15 +31,35 @@ int main(int argc, char *argv[])
   frameInfo depthRGBInfo;
   frameInfo videoInfo;
 
+  /*
+   *  Define the configuration for the camera, in this case we start the stream of:
+   *  - RGB Color stream at 1280x720 @ 30fps
+   *  - Depth Stream at 1280x720 @ 30fps
+   *  and disable all others since we don't need them
+   */
+
   rs2::config config;
   config.disable_all_streams();
   config.enable_stream(rs2_stream::RS2_STREAM_COLOR, 1280, 720, rs2_format::RS2_FORMAT_RGB8, 30);
   config.enable_stream(rs2_stream::RS2_STREAM_DEPTH, 1280, 720, rs2_format::RS2_FORMAT_Z16, 30);
 
+  /*
+   * Create a color map to aply to the depth data,
+   * in this case Black to White
+   * i.e black is close white is far
+   */
 
   rs2::colorizer color_map(3);
+
+  /*
+   * Create the data pipe to the camera with the configuration we want
+   */
   rs2::pipeline pipe;
   pipe.start(config);
+
+  /*
+   * Open the binary files and check if they are really open
+   */
 
   std::fstream rgb(rgbFile, std::ios::out | std::ios::binary);
   std::fstream depth(depthFile, std::ios::out | std::ios::binary);
@@ -52,12 +73,19 @@ int main(int argc, char *argv[])
     return -1;
   }
 
+  /*
+   * This is, supposedly, to let the auto exposure settle a bit
+   * Not sure if it really does something or not
+   */
+
   for (auto i = 0; i < 30; ++i)
   {
     pipe.wait_for_frames();
   }
 
-  int i = 0;
+ /*
+  * This is where we write the file start with info about the frame we will collect
+  */
 
   for (auto &&dataFrame: pipe.wait_for_frames())
   {
@@ -93,7 +121,10 @@ int main(int argc, char *argv[])
 
 
   }
-
+  /*
+   * Print the data
+   * Just for debug
+   */
   std::cout << "Depth Info Data" << std::endl << "====================" << std::endl;
   std::cout << "Data Size: " << depthInfo.dataSize << std::endl
             << "Stride: " << depthInfo.strideBytes << std::endl
@@ -118,43 +149,55 @@ int main(int argc, char *argv[])
             << "Bytes per pixel: " << videoInfo.pixelBytes << std::endl;
   std::cout << "====================" << std::endl;
 
-  std::cout << std::endl << "Depth size: " << sizeof(depthInfo) << "  Depth RGB size: "
-            << sizeof(depthRGBInfo) << "  Video size: " << sizeof(videoInfo) << std::endl;
-  std::cout << "====================" << std::endl << std::endl;
+  /*
+   * Save the structures to the files
+   */
 
   depth.write(reinterpret_cast<char *>(&depthInfo), sizeof(depthInfo));
   depthRGB.write(reinterpret_cast<char *>(&depthRGBInfo), sizeof(depthRGBInfo));
   rgb.write(reinterpret_cast<char *>(&videoInfo), sizeof(videoInfo));
 
 
-  i = 0;
+  int i = 0;
+
+  /*
+   * Capture 10 frames for test
+   */
 
   for (int j = 0; j < 10; ++j)
   {
     for (auto &&frame: pipe.wait_for_frames())
     {
       std::cout << "Vai " << i << " Vezes" << std::endl;
+
       if (auto vf = frame.as<rs2::video_frame>())
       {
-        if (vf.is<rs2::depth_frame>())
+        if (vf.is<rs2::depth_frame>()) //If it is a depth frame
         {
-          auto pixels = (uint16_t *) vf.get_data();
-          depth.write(reinterpret_cast<char *>(pixels), vf.get_data_size());
+          auto pixels = (uint16_t *) vf.get_data(); //Grab the data pointer
+          depth.write(reinterpret_cast<char *>(pixels), vf.get_data_size()); //Write the raw data to a file
 
-          vf = color_map.process(frame);
-          pixels = (uint16_t *) vf.get_data();
-          depthRGB.write(reinterpret_cast<char *>(pixels), vf.get_data_size());
+          vf = color_map.process(frame);  //Apply a color map and "Make an image"
+          pixels = (uint16_t *) vf.get_data();   //Grab the data pointer
+          depthRGB.write(reinterpret_cast<char *>(pixels), vf.get_data_size()); //Write the RGB Image to the file
         }
         else
         {
-          auto pixels = (uint16_t *) vf.get_data();
-          rgb.write(reinterpret_cast<char *>(pixels), vf.get_data_size());
+          auto pixels = (uint16_t *) vf.get_data(); //Grab the data pointer
+          rgb.write(reinterpret_cast<char *>(pixels), vf.get_data_size()); //Save to a file
         }
       }
       i++;
     }
   }
+
+  /*
+   * Close all the files
+   */
+
   rgb.close();
   depth.close();
+  depthRGB.close();
+
   return 0;
 }

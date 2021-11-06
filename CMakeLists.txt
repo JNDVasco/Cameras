@@ -45,9 +45,7 @@ link_directories(${ZED_LIBRARY_DIR})
 link_directories(${CUDA_LIBRARY_DIRS})
 link_directories(${OpenCV_LIBRARY_DIRS})
 
-add_executable(zed2_Rec ZED/include/utils.hpp ZED/main.cpp)
-add_executable(zed2_Parse ZED/include/utils.hpp ZED/parse.cpp)
-add_executable(zed2_RecParse ZED/include/utils.hpp ZED/captureAndParse.cpp)
+add_executable(zed2 ZED/include/utils.hpp ZED/main.cpp)
 
 if (LINK_SHARED_ZED)
     set(ZED_LIBS ${ZED_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_CUDART_LIBRARY} ${CUDA_NPP_LIBRARIES_ZED})
@@ -55,9 +53,7 @@ else ()
     set(ZED_LIBS ${ZED_STATIC_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_LIBRARY})
 endif ()
 
-target_link_libraries(zed2_Rec ${ZED_LIBS} ${OpenCV_LIBRARIES})
-target_link_libraries(zed2_Parse ${ZED_LIBS} ${OpenCV_LIBRARIES})
-target_link_libraries(zed2_RecParse ${ZED_LIBS} ${OpenCV_LIBRARIES})
+target_link_libraries(zed2 ${ZED_LIBS} ${OpenCV_LIBRARIES})
 
 if (INSTALL_SAMPLES)
     list(APPEND SAMPLE_LIST zed2)
