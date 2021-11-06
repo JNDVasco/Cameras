@@ -10,9 +10,9 @@
 
 #include "stb_image_write.h"
 
-const std::string rgbFile = "../D435i/rgbData.bin";
-const std::string depthFile = "../D435i/depthData.bin";
-const std::string depthRGBFile = "../D435i/depthRGBData.bin";
+const std::string rgbFile = "../D435i/data/rgbData.bin";
+const std::string depthFile = "../D435i/data/depthData.bin";
+const std::string depthRGBFile = "../D435i/data/depthRGBData.bin";
 
 uint16_t dataVideo[2764800] = {0};
 uint16_t dataDepthRGB[2764800] = {0};
@@ -38,6 +38,10 @@ int main(int argc, char *argv[])
   frameInfo depthRGBInfo;
   frameInfo videoInfo;
 
+  /*
+   * Opening the binary Files
+   */
+
   std::fstream rgb(rgbFile, std::ios::in | std::ios::binary);
   std::fstream depth(depthFile, std::ios::in | std::ios::binary);
   std::fstream depthRGB(depthRGBFile, std::ios::in | std::ios::binary);
@@ -50,10 +54,9 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  std::cout << std::endl << "Depth size: " << sizeof(depthInfo) << "  Depth RGB size: "
-            << sizeof(depthRGBInfo) << "  Video size: " << sizeof(videoInfo) << std::endl;
-  std::cout << "====================" << std::endl << std::endl;
-
+  /*
+   * Print some information about the data on the files
+   */
 
   depth.read(reinterpret_cast<char *>(&depthInfo), sizeof(depthInfo));
   depthRGB.read(reinterpret_cast<char *>(&depthRGBInfo), sizeof(depthRGBInfo));
@@ -84,6 +87,13 @@ int main(int argc, char *argv[])
             << "Bytes per pixel: " << videoInfo.pixelBytes << std::endl;
   std::cout << "====================" << std::endl;
 
+  /*
+   * Do something with the data, in this case writing the first 10 frame to a .png
+   * Can be replaced with while loop where the condition is:
+   * rgb.read(reinterpret_cast<char *>(dataVideo), videoInfo.dataSize)
+   * to read all the frames until the end of the file.
+   */
+
   for (int i = 0; i < 10; ++i)
   {
     rgb.read(reinterpret_cast<char *>(dataVideo), videoInfo.dataSize);
@@ -94,10 +104,9 @@ int main(int argc, char *argv[])
     std::cout << "Ficheiro RGB Escrito! - " << i << std::endl;
 
     depth.read(reinterpret_cast<char *>(dataDepth), depthInfo.dataSize);
-    stbi_write_png(("Teste Depth - " + std::to_string(i) + ".png").c_str(), depthInfo.width, depthInfo.height,
-                   depthInfo.pixelBytes, dataDepth, depthInfo.strideBytes);
-
-    std::cout << "Ficheiro Depth Escrito! - " << i << std::endl;
+    /*
+     * Do something with the raw depth data like aplying a custom color map or idk
+     */
 
     depthRGB.read(reinterpret_cast<char *>(dataDepthRGB), depthRGBInfo.dataSize);
     stbi_write_png(("Teste DepthRGB - " + std::to_string(i) + ".png").c_str(), depthRGBInfo.width, depthRGBInfo.height,
