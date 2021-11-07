@@ -116,5 +116,9 @@ int main(int argc, char *argv[])
 
   }
 
+  rgb.close();
+  depth.close();
+  depthRGB.close();
+
   return 0;
 }

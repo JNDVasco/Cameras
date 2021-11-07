@@ -5,8 +5,11 @@
 ```
 Start of the file
 ---------------------
-Resolution (sl::Resolution)
+Width
+Height
+Bytes per Pixel
 Step
+Width Bytes
 ---------------------
 Start of Frame 1 Data 
 .
@@ -24,9 +27,8 @@ End of Frame n Data
 End of the File 
 ```
 
-Note: `sl::Resolution` contains both height and width and step is the
-number of bytes of one pixel row (i.e one "width) so to get the total 
-data size we can do `Step * Resolution.height`.
+Note: `Width Bytes` is the number of bytes of one pixel row (i.e one "width) 
+so to get the total  data size we can do `Width Bytes * Height`.
 
 # Intel D435i
 ## Binary File Structure
