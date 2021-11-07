@@ -45,8 +45,8 @@ link_directories(${ZED_LIBRARY_DIR})
 link_directories(${CUDA_LIBRARY_DIRS})
 link_directories(${OpenCV_LIBRARY_DIRS})
 
-add_executable(zed2 ZED/include/utils.hpp ZED/main.cpp)
-add_executable(binToJPGZed2 ZED/include/utils.hpp ZED/binToJPG_ZED2.cpp)
+add_executable(zed2 ZED/main.cpp)
+add_executable(binToJPGZed2 ZED/binToJPG_ZED2.cpp)
 
 
 if (LINK_SHARED_ZED)
